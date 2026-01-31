@@ -41,7 +41,7 @@ The core utility is the **Smart Optimization Algorithm** that:
 
 1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/rohit3337/microgrid-hacker.git
+    git clone https://github.com/rohit3337/microgrid_hackathon
     cd microgrid-hacker
     ```
 
