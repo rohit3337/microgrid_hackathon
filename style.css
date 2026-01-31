@@ -829,3 +829,33 @@ input:checked+.slider {
 input:checked+.slider:before {
     transform: translateX(20px);
 }
+
+/* Weather badge (top-right) */
+.env-weather-display {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15,23,42,0.75);
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    z-index: 30;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+.env-weather-display i { color: var(--solar); font-size: 1.1rem; filter: drop-shadow(0 0 6px rgba(0,0,0,0.6)); }
+
+/* 3D ICONS: subtle continuous rotation + parallax */
+.comp-box.animated-3d { will-change: transform; }
+
+/* Chart 3D container */
+.chart-3d-canvas { width:100%; height:320px; display:block; }
+.chart-container.chart-3d-mode .chart-box canvas { display:none; }
+.chart-container.chart-3d-mode .chart-3d-wrapper { display:block; }
+.chart-3d-wrapper { display:none; width:100%; height:320px; }
+
+/* When Three.js icons are active, hide the static component images */
+.env-icons-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }

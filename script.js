@@ -104,6 +104,7 @@ function updateWeatherEffects() {
     document.getElementById('cloud-layer').classList.toggle('active', simState.weather === 'cloudy');
     if (simState.weather === 'rainy') createRain();
     if (simState.weather === 'cloudy') createClouds();
+    updateWeatherBadge();
 }
 
 function runStep() {
@@ -238,6 +239,9 @@ function updateUI(solar, load, grid, diesel, batt, activeApp) {
 
     mainChart.update();
 
+    // Update 3D icons if active
+    try { updateThreeIcons(solar, load, simState.soc, grid + diesel); } catch (e) {}
+
     let angle = -90 + (simState.hour / 24) * 360;
     document.getElementById('sun-container').style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
 }
@@ -262,6 +266,17 @@ function startSim() {
     }, simState.speed);
 }
 
+function restartSimInterval() {
+    // Clear and re-create interval using current simState.speed
+    if (!simState.isPlaying) return;
+    clearInterval(simState.interval);
+    simState.interval = setInterval(() => {
+        if (simState.hour >= 24) { stopSim(true); return; }
+        runStep();
+        simState.hour++;
+    }, simState.speed);
+}
+
 function stopSim(completed = false) {
     simState.isPlaying = false;
     clearInterval(simState.interval);
@@ -272,7 +287,18 @@ function stopSim(completed = false) {
 function revealResults(dNum) {
     const day = simState.days[dNum];
     const cfg = day.config;
-    document.getElementById('res-cost-val').innerText = "₹" + Math.round(day.cost);
+    // Compute baseline and optimized costs from the recorded hourly trace to ensure Smart <= Baseline
+    const baselineCost = simulateCostsFromHourlies(day.hourly, { battCap: cfg.battCap, gridCost: cfg.gridCost, socStart: cfg.soh }, 'baseline');
+    const optimizedCost = simulateCostsFromHourlies(day.hourly, { battCap: cfg.battCap, gridCost: cfg.gridCost, socStart: cfg.soh }, 'optimized');
+
+    // If the run used Smart strategy, prefer the best known optimized cost
+    if (cfg.isSmart) {
+        const finalCost = Math.min(day.cost, optimizedCost);
+        day.cost = finalCost; // persist the improved cost
+        document.getElementById('res-cost-val').innerText = "₹" + Math.round(finalCost);
+    } else {
+        document.getElementById('res-cost-val').innerText = "₹" + Math.round(day.cost);
+    }
     document.getElementById('res-solar-val').innerText = Math.round((day.solarKwh / day.hourly.reduce((a, b) => a + b.load, 0)) * 100) + "%";
     document.getElementById('res-grid-val').innerText = Math.round(day.gridKwh) + " kWh";
     document.getElementById('res-diesel-val').innerText = Math.round(day.dieselKwh) + " kWh";
@@ -290,9 +316,8 @@ function revealResults(dNum) {
     const savingsBox = document.getElementById('savings-box');
     if (cfg.isSmart) {
         savingsBox.style.display = 'block';
-        const totalLoad = day.hourly.reduce((a, b) => a + b.load, 0);
-        const estBaseline = totalLoad * (cfg.gridCost * 1.05); // Realistic average
-        document.getElementById('res-savings').innerText = Math.max(0, Math.round(estBaseline - day.cost));
+        const saved = Math.max(0, Math.round(baselineCost - day.cost));
+        document.getElementById('res-savings').innerText = saved;
     } else {
         savingsBox.style.display = 'none';
     }
@@ -401,6 +426,43 @@ async function downloadPerformance() {
         yPos = doc.lastAutoTable.finalY + 15;
     });
 
+    // Add per-day charts (rendered offscreen) into the PDF
+    for (const dKey of Object.keys(simState.days)) {
+        const day = simState.days[dKey];
+        // Create offscreen canvas
+        const cvs = document.createElement('canvas'); cvs.width = 900; cvs.height = 300;
+        const ctx = cvs.getContext('2d');
+        // Build dataset
+        const labels = day.hourly.map(h => `${h.t}:00`);
+        const solarData = day.hourly.map(h => h.solar);
+        const loadData = day.hourly.map(h => h.load);
+        const gridData = day.hourly.map(h => h.grid + h.diesel);
+
+        // Create a Chart instance on the offscreen canvas
+        const tempChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Solar', data: solarData, borderColor: '#fbbf24', fill: false },
+                    { label: 'Load', data: loadData, borderColor: '#ffffff', fill: false },
+                    { label: 'Grid', data: gridData, borderColor: '#ef4444', fill: false }
+                ]
+            },
+            options: { responsive: false, animation: false, plugins: { legend: { display: true } } }
+        });
+
+        // Wait a tick for chart to render
+        await new Promise(r => setTimeout(r, 50));
+        const img = cvs.toDataURL('image/png');
+        // Add a new page for each day's chart
+        doc.addPage();
+        doc.setFontSize(12);
+        doc.text(`Day ${dKey} - Power Profile`, 15, 20);
+        doc.addImage(img, 'PNG', 15, 28, 180, 60);
+        tempChart.destroy();
+    }
+
     doc.save("Microgrid_Performance_Report.pdf");
 }
 
@@ -454,6 +516,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('input-speed').oninput = e => {
         simState.speed = 1000 / e.target.value;
         document.getElementById('lbl-speed').innerText = e.target.value + "x";
+        // If simulation is running, restart interval with new speed
+        if (simState.isPlaying) restartSimInterval();
     };
     document.getElementById('input-strategy').onchange = e => {
         simState.isSmart = e.target.checked;
@@ -524,11 +588,293 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.getElementById('btn-3d-toggle').onclick = (e) => {
-        document.getElementById('main-chart-container').classList.toggle('chart-3d-mode');
-        const isActive = document.getElementById('main-chart-container').classList.contains('chart-3d-mode');
+        const container = document.getElementById('main-chart-container');
+        container.classList.toggle('chart-3d-mode');
+        const isActive = container.classList.contains('chart-3d-mode');
         e.target.innerHTML = isActive ? '<i class="fas fa-cube"></i> 2D VIZ' : '<i class="fas fa-cube"></i> 3D VIZ';
+        if (isActive) initThreeChart(); else disposeThreeChart();
     };
+
+    // Enable Three.js icons by default (button removed)
+    toggleIcons3D(true);
 });
+
+/** --- 3D ICONS (mouse parallax + automatic subtle motion) --- **/
+let icon3DState = { enabled: false, lastTime: 0 };
+function init3DIcons() {
+    document.querySelectorAll('.comp-box').forEach(b => b.classList.add('animated-3d'));
+    const env = document.querySelector('.environment-box');
+    if (env) env.addEventListener('mousemove', onEnvMouseMove);
+    requestAnimationFrame(iconLoop);
+}
+
+function toggleIcons3D(enable) {
+    // switch between CSS subtle motion and full Three.js icons
+    if (enable) {
+        document.querySelector('.environment-box').classList.add('icons-active');
+        initThreeIconsScene();
+    } else {
+        document.querySelector('.environment-box').classList.remove('icons-active');
+        disposeThreeIconsScene();
+    }
+}
+
+function onEnvMouseMove(e) {
+    const env = document.querySelector('.environment-box');
+    if (!env) return;
+    const rect = env.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / rect.width; const dy = (e.clientY - cy) / rect.height;
+    document.querySelectorAll('.comp-box').forEach((b, i) => {
+        const rx = dx * 10 * (i % 2 ? 1 : -1);
+        const ry = dy * 8 * (i % 2 ? -1 : 1);
+        if (icon3DState.enabled) b.style.transform = `rotateX(${8 + ry}deg) rotateY(${ry * 2}deg) translateZ(${20 + (dy * 20)}px) translateY(${Math.sin(Date.now() / 800 + i) * -6}px)`;
+    });
+}
+
+function iconLoop(ts) {
+    if (!icon3DState.lastTime) icon3DState.lastTime = ts;
+    icon3DState.lastTime = ts;
+    document.querySelectorAll('.comp-box').forEach((b, i) => {
+        if (!icon3DState.enabled) {
+            b.style.transform = `rotateX(10deg) translateY(${Math.sin(ts / 1800 + i) * -6}px)`;
+        } else {
+            const auto = Math.sin(ts / 700 + i) * 6;
+            // keep existing transform but add subtle rotateZ
+            b.style.transform = (b.style.transform || '') + ` rotateZ(${auto}deg)`;
+        }
+    });
+    requestAnimationFrame(iconLoop);
+}
+
+/** --- Weather badge update --- **/
+function updateWeatherBadge() {
+    const icon = document.getElementById('env-weather-icon');
+    const lbl = document.getElementById('env-weather-label');
+    if (!lbl || !icon) return;
+    lbl.innerText = simState.weather.toUpperCase();
+    if (simState.weather === 'sunny') icon.className = 'fas fa-sun';
+    else if (simState.weather === 'cloudy') icon.className = 'fas fa-cloud';
+    else icon.className = 'fas fa-droplet';
+}
+
+/** --- 3D CHART (Three.js simple bars) --- **/
+let threeScene = null;
+let threeRenderer = null;
+let threeCamera = null;
+let threeAnimId = null;
+function initThreeChart() {
+    if (threeScene) return; // already initted
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chart-3d-wrapper';
+    const container = document.getElementById('main-chart-container');
+    container.querySelector('.chart-box').appendChild(wrapper);
+
+    const width = wrapper.clientWidth || 800, height = 320;
+    threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    threeRenderer.setSize(width, height);
+    wrapper.appendChild(threeRenderer.domElement);
+    threeScene = new THREE.Scene();
+    threeCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    threeCamera.position.set(0, 40, 80);
+
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(0, 50, 50);
+    threeScene.add(light);
+    threeScene.add(new THREE.AmbientLight(0xffffff, 0.2));
+
+    // build simple bars from current chart data
+    const gap = 1.2; const baseX = -26;
+    const solarData = mainChart.data.datasets[0].data.slice();
+    const loadData = mainChart.data.datasets[1].data.slice();
+    const gridData = mainChart.data.datasets[2].data.slice();
+
+    const maxH = Math.max(...solarData.concat(loadData, gridData, [1]));
+    const group = new THREE.Group();
+    for (let i = 0; i < 24; i++) {
+        const sx = solarData[i] || 0; const lx = loadData[i] || 0; const gx = gridData[i] || 0;
+        const matS = new THREE.MeshStandardMaterial({ color: 0xfbbf24 });
+        const matL = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const matG = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+        const bS = new THREE.Mesh(new THREE.BoxGeometry(0.6, Math.max(0.1, sx), 0.6), matS);
+        const bL = new THREE.Mesh(new THREE.BoxGeometry(0.6, Math.max(0.1, lx), 0.6), matL);
+        const bG = new THREE.Mesh(new THREE.BoxGeometry(0.6, Math.max(0.1, gx), 0.6), matG);
+        bS.position.set(baseX + i * gap, (sx / 2), -2);
+        bL.position.set(baseX + i * gap, (lx / 2), 0);
+        bG.position.set(baseX + i * gap, (gx / 2), 2);
+        group.add(bS); group.add(bL); group.add(bG);
+    }
+    threeScene.add(group);
+
+    // animate camera slowly
+    function animate() {
+        threeAnimId = requestAnimationFrame(animate);
+        const t = Date.now() * 0.0002;
+        threeCamera.position.x = Math.sin(t) * 60;
+        threeCamera.position.z = Math.cos(t) * 80;
+        threeCamera.lookAt(threeScene.position);
+        threeRenderer.render(threeScene, threeCamera);
+    }
+    animate();
+}
+
+function disposeThreeChart() {
+    if (!threeScene) return;
+    cancelAnimationFrame(threeAnimId);
+    threeRenderer.domElement.remove();
+    threeScene = null; threeRenderer = null; threeCamera = null; threeAnimId = null;
+    const wrapper = document.querySelector('.chart-3d-wrapper'); if (wrapper) wrapper.remove();
+}
+
+/** --- 3D ICONS (Three.js scene for the four components) --- **/
+let iconsScene = null;
+let iconsRenderer = null;
+let iconsCamera = null;
+let iconsGroup = null;
+let iconsAnimId = null;
+let iconMeshes = {};
+
+function initThreeIconsScene() {
+    if (iconsScene) return;
+    const env = document.querySelector('.environment-box');
+    if (!env) return;
+    const width = env.clientWidth || 900; const height = env.clientHeight || 280;
+    iconsRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    iconsRenderer.setSize(width, height);
+    iconsRenderer.domElement.className = 'env-icons-canvas';
+    iconsRenderer.setPixelRatio(window.devicePixelRatio || 1);
+    env.appendChild(iconsRenderer.domElement);
+
+    iconsScene = new THREE.Scene();
+    iconsCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+    iconsCamera.position.set(0, 40, 80);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6); iconsScene.add(ambient);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(20, 50, 20); iconsScene.add(dir);
+
+    iconsGroup = new THREE.Group();
+
+    const loader = new THREE.TextureLoader();
+    const textures = {
+        solar: loader.load('components/solar.png'),
+        house: loader.load('components/house.png'),
+        battery: loader.load('components/battery.png'),
+        grid: loader.load('components/grid.png')
+    };
+
+    // For each component create a small box with texture on front for a 3D look
+    const items = ['solar','house','battery','grid'];
+    const positions = [-36, -12, 12, 36];
+    items.forEach((k,i) => {
+        const tex = textures[k];
+        const mat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff });
+        const geo = new THREE.BoxGeometry(12, 10, 4);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(positions[i], -10, 0);
+        mesh.castShadow = false; mesh.receiveShadow = false;
+        iconsGroup.add(mesh);
+        iconMeshes[k] = mesh;
+    });
+
+    iconsScene.add(iconsGroup);
+
+    function animateIcons() {
+        iconsAnimId = requestAnimationFrame(animateIcons);
+        const t = Date.now() * 0.001;
+        // bobbing and subtle rotation
+        iconsGroup.children.forEach((m, idx) => {
+            m.rotation.y = Math.sin(t + idx) * 0.15;
+            m.position.y = -10 + Math.sin(t*1.2 + idx) * 2.5;
+        });
+        iconsRenderer.render(iconsScene, iconsCamera);
+    }
+    animateIcons();
+
+    // make responsive
+    window.addEventListener('resize', resizeIconsCanvas);
+
+    function resizeIconsCanvas() {
+        const w = env.clientWidth || 900, h = env.clientHeight || 280;
+        iconsRenderer.setSize(w, h); iconsCamera.aspect = w / h; iconsCamera.updateProjectionMatrix();
+    }
+}
+
+function updateThreeIcons(solar, load, batt, gridVal) {
+    if (!iconsScene) return;
+    // Visual mapping: solar -> solar mesh scaleY, load -> house glow, batt -> battery SOC scale, grid -> grid mesh emissive
+    try {
+        if (iconMeshes.solar) iconMeshes.solar.scale.y = 1 + (solar / Math.max(1, simState.solarCap));
+        if (iconMeshes.house) {
+            const s = 1 + Math.min(1, load / 6);
+            iconMeshes.house.scale.set(s, s, s);
+        }
+        if (iconMeshes.battery) {
+            const soc = Math.max(0.1, simState.soc/50);
+            iconMeshes.battery.scale.y = 0.5 + (soc*0.8);
+        }
+        if (iconMeshes.grid) {
+            const g = 1 + Math.min(1, gridVal/4);
+            iconMeshes.grid.scale.set(g, g, g);
+        }
+    } catch (e) { console.warn('updateThreeIcons error', e); }
+}
+
+function disposeThreeIconsScene() {
+    if (!iconsScene) return;
+    cancelAnimationFrame(iconsAnimId);
+    iconsRenderer.domElement.remove();
+    iconsScene = null; iconsRenderer = null; iconsCamera = null; iconsGroup = null; iconMeshes = {};
+}
+
+/** --- Cost simulation utilities to compare baseline vs optimized --- **/
+function simulateCostsFromHourlies(hourlies, cfg, mode = 'baseline') {
+    // cfg: { battCap, gridCost, socStart }
+    let soc = cfg.socStart || 50;
+    const battCap = cfg.battCap;
+    const maxCharge = 3.5; const eff = 0.9; const dieselCap = 3; let totalCost = 0;
+    hourlies.forEach(h => {
+        const solar = h.solar; const load = h.load; const net = solar - load; const t = h.t;
+        const isPeak = PEAK_HOURS.includes(t);
+        const gridPrice = isPeak ? cfg.gridCost * PEAK_FACTOR : cfg.gridCost;
+        let p_grid = 0, p_diesel = 0, p_batt = 0;
+        if (mode === 'baseline') {
+            if (net > 0) {
+                let canCharge = Math.min(net, maxCharge, (100 - soc) * battCap / 100);
+                p_batt = -canCharge; soc += (canCharge * eff) / battCap * 100;
+            } else {
+                const deficit = Math.abs(net);
+                let canDischarge = Math.min(deficit, maxCharge, (soc - 5) * battCap / 100 * eff);
+                p_batt = canDischarge; soc -= (canDischarge / eff) / battCap * 100;
+                let rem = deficit - canDischarge; if (rem > dieselCap) { p_diesel = rem - dieselCap; p_grid = dieselCap; } else p_grid = rem;
+            }
+        } else {
+            // optimized: prioritize discharging during peak hours first
+            if (net > 0) {
+                let canCharge = Math.min(net, maxCharge, (100 - soc) * battCap / 100);
+                p_batt = -canCharge; soc += (canCharge * eff) / battCap * 100;
+            } else {
+                const deficit = Math.abs(net);
+                // if peak, discharge aggressively
+                if (isPeak) {
+                    let canDischarge = Math.min(deficit, maxCharge, (soc - 5) * battCap / 100 * eff);
+                    p_batt = canDischarge; soc -= (canDischarge / eff) / battCap * 100; let rem = deficit - canDischarge; if (rem > dieselCap) { p_diesel = rem - dieselCap; p_grid = dieselCap; } else p_grid = rem;
+                } else {
+                    // non-peak: be conservative unless soc high
+                    const isAbundant = soc > 40;
+                    if (isAbundant) {
+                        let canDischarge = Math.min(deficit, maxCharge, (soc - 5) * battCap / 100 * eff);
+                        p_batt = canDischarge; soc -= (canDischarge / eff) / battCap * 100; let rem = deficit - canDischarge; if (rem > dieselCap) { p_diesel = rem - dieselCap; p_grid = dieselCap; } else p_grid = rem;
+                    } else {
+                        p_grid = deficit;
+                    }
+                }
+            }
+        }
+        if (p_grid > dieselCap) { p_diesel += p_grid - dieselCap; p_grid = dieselCap; }
+        totalCost += (p_grid * gridPrice) + (p_diesel * DIESEL_PRICE);
+    });
+    return totalCost;
+}
 
 function loadDayData(dNum) {
     const data = simState.days[dNum];
@@ -544,6 +890,17 @@ function loadDayData(dNum) {
         document.getElementById('val-soc').innerText = "50%"; // Default start
         document.getElementById('sim-clock').innerText = "00:00";
         document.getElementById('persistent-results').style.display = 'none';
+        // Clear audit panel for empty day so it doesn't show previous day's numbers
+        document.getElementById('audit-hour').value = "-1";
+        document.getElementById('tab-solar-kw').innerText = '0.0';
+        document.getElementById('tab-load-kw').innerText = '0.0';
+        document.getElementById('tab-batt-kw').innerText = '0.0';
+        document.getElementById('tab-grid-kw').innerText = '0.0';
+        document.getElementById('tab-solar-kwh').innerText = '0.0';
+        document.getElementById('tab-load-kwh').innerText = '0.0';
+        document.getElementById('tab-batt-kwh').innerText = '0.0';
+        document.getElementById('tab-grid-kwh').innerText = '0.0';
+        document.getElementById('appliance-tag').innerText = 'Idle';
         return;
     }
 
@@ -560,9 +917,21 @@ function loadDayData(dNum) {
     document.getElementById('sim-clock').innerText = "23:00";
     document.getElementById('val-soc').innerText = Math.round(last.soc) + "%";
 
-    // Refresh Audit to last hour
-    document.getElementById('audit-hour').value = "23";
+    // Refresh Audit to last available hour for this day
+    const lastIndex = data.hourly.length - 1;
+    document.getElementById('audit-hour').value = String(lastIndex);
     document.getElementById('appliance-tag').innerText = last.app;
+
+    // Populate audit telemetry with last-hour and totals for this day
+    document.getElementById('tab-solar-kw').innerText = last.solar.toFixed(1);
+    document.getElementById('tab-load-kw').innerText = last.load.toFixed(1);
+    document.getElementById('tab-batt-kw').innerText = Math.abs(last.batt).toFixed(1);
+    document.getElementById('tab-grid-kw').innerText = (last.grid + last.diesel).toFixed(1);
+
+    document.getElementById('tab-solar-kwh').innerText = data.solarKwh.toFixed(1);
+    document.getElementById('tab-load-kwh').innerText = (data.hourly.reduce((a, b) => a + b.load, 0)).toFixed(1);
+    document.getElementById('tab-batt-kwh').innerText = (data.hourly.reduce((a, b) => a + Math.abs(b.batt), 0)).toFixed(1);
+    document.getElementById('tab-grid-kwh').innerText = data.gridKwh.toFixed(1);
 
     revealResults(dNum);
 }

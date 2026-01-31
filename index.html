@@ -60,6 +60,12 @@
                     <!-- NEW: APPLIANCE STATUS -->
                     <div id="appliance-tag">Idle</div>
 
+                    <!-- Real-time Weather Badge (non-overlapping) -->
+                    <div id="env-weather-display" class="env-weather-display">
+                        <i class="fas fa-sun" id="env-weather-icon"></i>
+                        <span id="env-weather-label">SUNNY</span>
+                    </div>
+
                     <div class="infrastructure">
                         <!-- SOLAR -->
                         <div class="comp-box" id="solar-box">
@@ -105,6 +111,7 @@
                                 style="background:var(--primary); border:none; border-radius:8px; padding:4px 10px; font-size:0.7rem; color:white; cursor:pointer; box-shadow:0 4px 10px rgba(99,102,241,0.4);">
                                 <i class="fas fa-cube"></i> 3D VIZ
                             </button>
+                            <!-- 3D ICONS button removed; icons render in-scene by default -->
                         </div>
                         <div class="chart-toggles">
                             <button class="toggle-btn active" data-index="0">SOLAR</button>
@@ -292,6 +299,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
     <script src="script.js"></script>
 </body>
 
