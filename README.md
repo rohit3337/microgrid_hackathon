@@ -2,7 +2,7 @@
 
 > **Hackathon Submission**: A Physics-Based Solar Microgrid Digital Twin with Real-Time 3D Visualization.
 
-![Project Banner](https://via.placeholder.com/1200x500.png?text=Microgrid+Hacker+Simulator)
+[Project Link](https://microgrid-vlab-hackathon.vercel.app/)
 
 ## 📖 Overview
 **Microgrid Hacker** is a high-fidelity energy simulator designed to solve the "Dumb Grid" problem. It models the physics and economics of a smart home microgrid, allowing users to visualize how intelligent decision-making can optimize energy usage, reduce costs, and extend battery life.
