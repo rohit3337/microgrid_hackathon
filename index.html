@@ -4,302 +4,1077 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Microgrid Hacker | Extreme Analytics</title>
+    <title>⚡ MicroGrid Simulator | Smart Energy Scheduler</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;600;700;800&display=swap"
-        rel="stylesheet">
-    <!-- PDF EXPORT LIBRARIES -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 
 <body>
+    <!-- ============ LOADING SCREEN ============ -->
+    <div id="loading-screen">
+        <div class="loader-content">
+            <div class="energy-loader">
+                <div class="loader-ring"></div>
+                <div class="loader-ring"></div>
+                <div class="loader-ring"></div>
+                <i class="fas fa-bolt loader-icon"></i>
+            </div>
+            <h2>INITIALIZING MICROGRID</h2>
+            <p class="loader-text">Connecting to Energy Matrix...</p>
+            <div class="loader-bar">
+                <div class="loader-progress" id="loader-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ ACHIEVEMENT POPUP ============ -->
+    <div id="achievement-popup" class="achievement-popup">
+        <div class="achievement-glow"></div>
+        <div class="achievement-icon"><i class="fas fa-trophy"></i></div>
+        <div class="achievement-text">
+            <span class="achievement-title">🎉 ACHIEVEMENT UNLOCKED!</span>
+            <span class="achievement-name" id="achievement-name">First Run</span>
+        </div>
+    </div>
+
+    <!-- ============ TUTORIAL OVERLAY ============ -->
+    <div id="tutorial-overlay" class="tutorial-overlay" style="display:none;">
+        <div class="tutorial-card">
+            <div class="tutorial-step" id="tutorial-step">
+                <i class="fas fa-hand-pointer tutorial-icon"></i>
+                <h3>Welcome to MicroGrid Simulator!</h3>
+                <p>Experience next-generation energy management</p>
+            </div>
+            <div class="tutorial-nav">
+                <div class="tutorial-dots">
+                    <span class="dot active" data-step="0"></span>
+                    <span class="dot" data-step="1"></span>
+                    <span class="dot" data-step="2"></span>
+                    <span class="dot" data-step="3"></span>
+                </div>
+                <button id="tutorial-skip" class="btn btn-secondary btn-sm">SKIP</button>
+                <button id="tutorial-next" class="btn btn-primary btn-sm">NEXT <i class="fas fa-arrow-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ MAIN APP ============ -->
     <div class="app-wrapper">
         <!-- HEADER HUD -->
         <header class="hud-header">
             <div class="logo">
-                <i class="fas fa-microchip"></i>
+                <div class="logo-icon-wrapper">
+                    <i class="fas fa-bolt"></i>
+                    <div class="logo-pulse"></div>
+                </div>
                 <div class="logo-text">
-                    <h1>MICROGRID<span>HACKER</span></h1>
-                    <p>EXTREME ANALYTICS v3.0</p>
+                    <h1>MICRO<span>GRID</span></h1>
+                    <p>SMART ENERGY SIMULATOR v4.0</p>
                 </div>
             </div>
 
+            <!-- DAY NAVIGATION -->
             <div class="day-nav">
-                <button id="prev-day"><i class="fas fa-caret-left"></i></button>
-                <div id="current-day-label">DAY 1</div>
-                <button id="next-day"><i class="fas fa-caret-right"></i></button>
+                <button id="prev-day" class="nav-btn"><i class="fas fa-chevron-left"></i></button>
+                <div class="day-display">
+                    <span class="day-label">DAY</span>
+                    <span id="current-day-label" class="day-number">1</span>
+                </div>
+                <button id="next-day" class="nav-btn"><i class="fas fa-chevron-right"></i></button>
             </div>
 
+            <!-- LIVE STATS HUD -->
             <div class="hud-stats">
-                <div class="stat-item">
-                    <span class="label">Clock</span>
-                    <span class="value" id="sim-clock">00:00</span>
+                <div class="stat-item clock-stat">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-info">
+                        <span class="label">TIME</span>
+                        <span class="value" id="sim-clock">00:00</span>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <span class="label">Current Cost</span>
-                    <span class="value" id="hud-cost" style="color: var(--primary);">₹0</span>
+                <div class="stat-item cost-stat">
+                    <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
+                    <div class="stat-info">
+                        <span class="label">COST</span>
+                        <span class="value" id="hud-cost">₹0</span>
+                    </div>
                 </div>
+                <div class="stat-item energy-stat">
+                    <div class="stat-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="stat-info">
+                        <span class="label">SAVED</span>
+                        <span class="value" id="hud-energy-saved">0 kWh</span>
+                    </div>
+                </div>
+                <div class="stat-item eco-stat">
+                    <div class="stat-icon"><i class="fas fa-leaf"></i></div>
+                    <div class="stat-info">
+                        <span class="label">CO₂</span>
+                        <span class="value" id="hud-co2">0 kg</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HELP BUTTON -->
+            <button class="help-btn" id="btn-help" title="Learn How It Works">
+                <i class="fas fa-question-circle"></i>
+            </button>
+            
+            <!-- ACHIEVEMENT BADGE -->
+            <div class="achievement-badge" id="achievement-badge" title="Click to view achievements">
+                <i class="fas fa-award"></i>
+                <span id="achievement-count">0</span>
             </div>
         </header>
 
+        <!-- ============ MAIN CONTENT ============ -->
         <main class="main-layout">
-            <!-- LEFT: VISUALS & ANALYTICS -->
+            <!-- LEFT: VISUALIZATION SECTION -->
             <section class="vis-section">
-                <!-- VIRTUAL TWIN -->
-                <div class="environment-box env-sunny">
-                    <div id="sun-container" class="sun-orbit">
-                        <div class="sun-icon"><i class="fas fa-sun"></i></div>
+                <!-- 3D VILLAGE ENVIRONMENT -->
+                <div class="environment-box" id="village-container">
+                    <!-- TIME INDICATOR -->
+                    <div class="time-indicator" id="time-indicator">
+                        <div class="time-icons">
+                            <i class="fas fa-sun time-sun" id="time-sun"></i>
+                            <i class="fas fa-moon time-moon" id="time-moon"></i>
+                        </div>
+                        <span id="time-period">Morning</span>
                     </div>
 
-                    <!-- ANIMATION LAYERS -->
+                    <!-- SUN/MOON ORBIT -->
+                    <div id="sun-container" class="sun-orbit">
+                        <div class="celestial-body">
+                            <div class="sun-icon" id="sun-icon"><i class="fas fa-sun"></i></div>
+                            <div class="moon-icon" id="moon-icon"><i class="fas fa-moon"></i></div>
+                        </div>
+                    </div>
+
+                    <!-- STARS (NIGHT) -->
+                    <div class="stars-container" id="stars-container"></div>
+
+                    <!-- WEATHER EFFECTS -->
                     <div class="rain" id="rain-layer"></div>
                     <div class="clouds" id="cloud-layer"></div>
+                    <div class="lightning" id="lightning-layer"></div>
 
-                    <!-- NEW: APPLIANCE STATUS -->
-                    <div id="appliance-tag">Idle</div>
+                    <!-- ENERGY PARTICLES -->
+                    <canvas id="energy-particles-canvas"></canvas>
 
-                    <!-- Real-time Weather Badge (non-overlapping) -->
+                    <!-- WEATHER BADGE -->
                     <div id="env-weather-display" class="env-weather-display">
                         <i class="fas fa-sun" id="env-weather-icon"></i>
                         <span id="env-weather-label">SUNNY</span>
+                        <span id="env-temp">32°C</span>
                     </div>
 
-                    <div class="infrastructure">
-                        <!-- SOLAR -->
-                        <div class="comp-box" id="solar-box">
-                            <img src="components/solar.png" alt="Solar" class="comp-img">
-                            <div class="kw-tag" id="val-solar">0.0 kW</div>
-                            <h3>Sunny</h3>
-                            <div class="side-right"></div>
+                    <!-- EFFICIENCY RING -->
+                    <div class="efficiency-ring" id="efficiency-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="ring-bg" cx="50" cy="50" r="40"></circle>
+                            <circle class="ring-fill" id="efficiency-fill" cx="50" cy="50" r="40"></circle>
+                        </svg>
+                        <div class="efficiency-value">
+                            <span id="efficiency-percent">0%</span>
+                            <small>EFF</small>
+                        </div>
+                    </div>
+
+                    <!-- APPLIANCE STATUS -->
+                    <div class="appliance-board" id="appliance-board">
+                        <div class="appliance-icons">
+                            <div class="app-icon" data-app="ac" title="Air Conditioner">
+                                <i class="fas fa-snowflake"></i>
+                            </div>
+                            <div class="app-icon" data-app="washer" title="Washing Machine">
+                                <i class="fas fa-soap"></i>
+                            </div>
+                            <div class="app-icon" data-app="microwave" title="Microwave">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="app-icon" data-app="tv" title="Television">
+                                <i class="fas fa-tv"></i>
+                            </div>
+                            <div class="app-icon" data-app="lights" title="Lights">
+                                <i class="fas fa-lightbulb"></i>
+                            </div>
+                            <div class="app-icon" data-app="ev" title="EV Charger">
+                                <i class="fas fa-car"></i>
+                            </div>
+                        </div>
+                        <div class="appliance-tag" id="appliance-tag">
+                            <span class="tag-icon"><i class="fas fa-plug"></i></span>
+                            <span class="tag-text">Idle</span>
+                        </div>
+                    </div>
+
+                    <!-- 3D INFRASTRUCTURE COMPONENTS -->
+                    <div class="infrastructure" id="infrastructure">
+                        <!-- SOLAR PANEL -->
+                        <div class="comp-box solar-comp" id="solar-box">
+                            <div class="comp-glow"></div>
+                            <div class="comp-3d-wrapper">
+                                <img src="components/solar.png" alt="Solar" class="comp-img">
+                                <div class="solar-rays" id="solar-rays">
+                                    <div class="ray"></div>
+                                    <div class="ray"></div>
+                                    <div class="ray"></div>
+                                    <div class="ray"></div>
+                                </div>
+                            </div>
+                            <div class="kw-tag solar-tag">
+                                <i class="fas fa-sun"></i>
+                                <span id="val-solar">0.0 kW</span>
+                            </div>
+                            <h3>SOLAR</h3>
+                            <div class="energy-bar">
+                                <div class="energy-bar-fill solar-bar-fill" id="solar-bar-fill"></div>
+                            </div>
                         </div>
 
                         <!-- HOUSE -->
-                        <div class="comp-box" id="house-box">
-                            <img src="components/house.png" alt="House" class="comp-img">
-                            <div class="kw-tag" id="val-load">0.0 kW</div>
-                            <h3>House</h3>
-                            <div class="side-right"></div>
+                        <div class="comp-box house-comp" id="house-box">
+                            <div class="comp-glow"></div>
+                            <div class="comp-3d-wrapper">
+                                <img src="components/house.png" alt="House" class="comp-img">
+                                <div class="house-lights" id="house-lights">
+                                    <div class="window-light"></div>
+                                    <div class="window-light"></div>
+                                    <div class="window-light"></div>
+                                </div>
+                            </div>
+                            <div class="kw-tag load-tag">
+                                <i class="fas fa-home"></i>
+                                <span id="val-load">0.0 kW</span>
+                            </div>
+                            <h3>LOAD</h3>
+                            <div class="energy-bar">
+                                <div class="energy-bar-fill load-bar-fill" id="load-bar-fill"></div>
+                            </div>
                         </div>
 
                         <!-- BATTERY -->
-                        <div class="comp-box" id="batt-box">
-                            <img src="components/battery.png" alt="Battery" class="comp-img">
-                            <div class="kw-tag" id="val-soc">50%</div>
-                            <h3>Battery</h3>
-                            <div class="side-right"></div>
+                        <div class="comp-box battery-comp" id="batt-box">
+                            <div class="comp-glow"></div>
+                            <div class="comp-3d-wrapper">
+                                <img src="components/battery.png" alt="Battery" class="comp-img">
+                                <div class="battery-indicator" id="battery-indicator">
+                                    <div class="battery-level" id="battery-level"></div>
+                                    <div class="battery-charge-effect" id="battery-charge"></div>
+                                </div>
+                            </div>
+                            <div class="kw-tag battery-tag">
+                                <i class="fas fa-battery-three-quarters"></i>
+                                <span id="val-soc">50%</span>
+                            </div>
+                            <h3>BATTERY</h3>
+                            <div class="charge-direction" id="charge-direction">
+                                <i class="fas fa-arrow-down charging-icon"></i>
+                                <span class="charge-label">IDLE</span>
+                                <span class="charge-power" id="battery-power">0.0 kW</span>
+                            </div>
                         </div>
 
                         <!-- GRID -->
-                        <div class="comp-box" id="grid-box">
-                            <img src="components/grid.png" alt="Grid" class="comp-img">
-                            <div class="kw-tag" id="val-grid">0.0 kW</div>
-                            <h3>Grid</h3>
-                            <div class="side-right"></div>
+                        <div class="comp-box grid-comp" id="grid-box">
+                            <div class="comp-glow"></div>
+                            <div class="comp-3d-wrapper">
+                                <img src="components/grid.png" alt="Grid" class="comp-img">
+                                <div class="grid-electricity" id="grid-electricity"></div>
+                            </div>
+                            <div class="kw-tag grid-tag">
+                                <i class="fas fa-plug"></i>
+                                <span id="val-grid">0.0 kW</span>
+                            </div>
+                            <h3>GRID</h3>
+                            <div class="grid-price-tag" id="grid-price-tag">
+                                <span>₹10/kWh</span>
+                            </div>
+                        </div>
+
+                        <!-- DIESEL GENERATOR -->
+                        <div class="comp-box diesel-comp" id="diesel-box">
+                            <div class="comp-glow"></div>
+                            <div class="comp-3d-wrapper">
+                                <div class="diesel-icon-wrapper">
+                                    <i class="fas fa-gas-pump diesel-pump"></i>
+                                </div>
+                                <div class="diesel-smoke" id="diesel-smoke">
+                                    <div class="smoke-particle"></div>
+                                    <div class="smoke-particle"></div>
+                                    <div class="smoke-particle"></div>
+                                </div>
+                            </div>
+                            <div class="kw-tag diesel-tag">
+                                <i class="fas fa-fire-alt"></i>
+                                <span id="val-diesel">0.0 kW</span>
+                            </div>
+                            <h3>DIESEL</h3>
                         </div>
                     </div>
-                    <svg class="flow-container" id="flow-svg"></svg>
+
+                    <!-- ANIMATED ENERGY FLOW LINES -->
+                    <svg class="flow-svg" id="flow-svg">
+                        <defs>
+                            <linearGradient id="solar-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#fbbf24"/>
+                                <stop offset="100%" style="stop-color:#f59e0b"/>
+                            </linearGradient>
+                            <linearGradient id="grid-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#ef4444"/>
+                                <stop offset="100%" style="stop-color:#dc2626"/>
+                            </linearGradient>
+                            <linearGradient id="battery-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#10b981"/>
+                                <stop offset="100%" style="stop-color:#059669"/>
+                            </linearGradient>
+                            <filter id="glow-filter">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <!-- Flow paths will be drawn dynamically -->
+                    </svg>
                 </div>
 
-                <!-- CHART & TOGGLES -->
+                <!-- LIVE ENERGY SANKEY DIAGRAM -->
+                <div class="energy-sankey" id="energy-sankey">
+                    <div class="sankey-header">
+                        <h4><i class="fas fa-random"></i> REAL-TIME ENERGY FLOW</h4>
+                        <div class="sankey-legend">
+                            <span class="legend-item solar-legend"><i class="fas fa-sun"></i> Solar</span>
+                            <span class="legend-item battery-legend"><i class="fas fa-battery-half"></i> Battery</span>
+                            <span class="legend-item grid-legend"><i class="fas fa-plug"></i> Grid</span>
+                        </div>
+                    </div>
+                    <div class="sankey-diagram">
+                        <div class="sankey-sources">
+                            <div class="sankey-node solar-node">
+                                <div class="node-icon"><i class="fas fa-sun"></i></div>
+                                <div class="node-info">
+                                    <span class="node-label">Solar</span>
+                                    <span class="node-value" id="sankey-solar">0.0 kW</span>
+                                </div>
+                            </div>
+                            <div class="sankey-node battery-node" id="sankey-battery-out">
+                                <div class="node-icon"><i class="fas fa-battery-full"></i></div>
+                                <div class="node-info">
+                                    <span class="node-label">Battery Out</span>
+                                    <span class="node-value" id="sankey-batt-out">0.0 kW</span>
+                                </div>
+                            </div>
+                            <div class="sankey-node grid-node">
+                                <div class="node-icon"><i class="fas fa-plug"></i></div>
+                                <div class="node-info">
+                                    <span class="node-label">Grid</span>
+                                    <span class="node-value" id="sankey-grid">0.0 kW</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sankey-flows">
+                            <canvas id="sankey-canvas"></canvas>
+                        </div>
+                        <div class="sankey-destinations">
+                            <div class="sankey-node load-node">
+                                <div class="node-icon"><i class="fas fa-home"></i></div>
+                                <div class="node-info">
+                                    <span class="node-label">Load</span>
+                                    <span class="node-value" id="sankey-load">0.0 kW</span>
+                                </div>
+                            </div>
+                            <div class="sankey-node charge-node" id="sankey-battery-in">
+                                <div class="node-icon"><i class="fas fa-charging-station"></i></div>
+                                <div class="node-info">
+                                    <span class="node-label">Battery In</span>
+                                    <span class="node-value" id="sankey-batt-in">0.0 kW</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- POWER ANALYTICS CHART -->
                 <div class="chart-container" id="main-chart-container">
                     <div class="chart-header">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <h3><i class="fas fa-microscope"></i> POWER ANALYTICS</h3>
-                            <button id="btn-3d-toggle" class="btn-sm"
-                                style="background:var(--primary); border:none; border-radius:8px; padding:4px 10px; font-size:0.7rem; color:white; cursor:pointer; box-shadow:0 4px 10px rgba(99,102,241,0.4);">
-                                <i class="fas fa-cube"></i> 3D VIZ
-                            </button>
-                            <!-- 3D ICONS button removed; icons render in-scene by default -->
+                        <div class="chart-title">
+                            <h3><i class="fas fa-chart-area"></i> POWER ANALYTICS</h3>
+                            <div class="chart-actions">
+                                <button id="btn-3d-toggle" class="btn-icon" title="Toggle 3D View">
+                                    <i class="fas fa-cube"></i>
+                                </button>
+                                <button id="btn-fullscreen" class="btn-icon" title="Fullscreen">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-toggles">
-                            <button class="toggle-btn active" data-index="0">SOLAR</button>
-                            <button class="toggle-btn active" data-index="1">LOAD</button>
-                            <button class="toggle-btn active" data-index="2">GRID</button>
-                            <button class="toggle-btn active" data-index="3">SOC%</button>
+                            <button class="toggle-btn solar-toggle active" data-index="0">
+                                <i class="fas fa-sun"></i> SOLAR
+                            </button>
+                            <button class="toggle-btn load-toggle active" data-index="1">
+                                <i class="fas fa-home"></i> LOAD
+                            </button>
+                            <button class="toggle-btn grid-toggle active" data-index="2">
+                                <i class="fas fa-plug"></i> GRID
+                            </button>
+                            <button class="toggle-btn battery-toggle active" data-index="3">
+                                <i class="fas fa-bolt"></i> BATTERY
+                            </button>
+                            <button class="toggle-btn soc-toggle active" data-index="4">
+                                <i class="fas fa-battery-half"></i> SOC
+                            </button>
                         </div>
                     </div>
                     <div class="chart-box">
                         <canvas id="liveChart"></canvas>
                     </div>
+                    <!-- AI PREDICTION BADGE -->
+                    <div class="prediction-badge" id="prediction-badge">
+                        <i class="fas fa-brain"></i>
+                        <span>AI Optimized</span>
+                    </div>
                 </div>
 
-                <!-- PERFORMANCE OVERVIEW (INTEGRATED) -->
+                <!-- BASELINE VS SMART COMPARISON -->
+                <div class="cost-comparison-panel" id="cost-comparison">
+                    <div class="comparison-header">
+                        <h4><i class="fas fa-balance-scale"></i> BASELINE vs SMART SCHEDULER</h4>
+                        <div class="comparison-mode" id="comparison-mode">
+                            <span class="mode-indicator baseline-mode">BASELINE</span>
+                            <span class="mode-indicator smart-mode">SMART</span>
+                        </div>
+                    </div>
+                    <div class="comparison-content">
+                        <div class="comparison-bars">
+                            <div class="bar-group baseline-group">
+                                <div class="bar-label">
+                                    <span class="label-icon"><i class="fas fa-chart-line"></i></span>
+                                    <span>BASELINE</span>
+                                </div>
+                                <div class="comparison-bar">
+                                    <div class="bar-fill baseline-fill" id="baseline-fill"></div>
+                                    <span class="bar-value" id="baseline-cost">₹0</span>
+                                </div>
+                            </div>
+                            <div class="bar-group smart-group">
+                                <div class="bar-label">
+                                    <span class="label-icon"><i class="fas fa-robot"></i></span>
+                                    <span>SMART</span>
+                                </div>
+                                <div class="comparison-bar">
+                                    <div class="bar-fill smart-fill" id="smart-fill"></div>
+                                    <span class="bar-value" id="smart-cost">₹0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="savings-display" id="savings-display">
+                            <div class="savings-icon"><i class="fas fa-piggy-bank"></i></div>
+                            <div class="savings-info">
+                                <span class="savings-label">TOTAL SAVINGS</span>
+                                <span class="savings-value" id="savings-amount">₹0</span>
+                                <span class="savings-percent" id="savings-percent">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SIMULATION RESULTS -->
                 <div id="persistent-results" style="display: none;">
                     <div class="results-card">
-                        <i class="fas fa-award celebrate-icon"></i>
-                        <h2>SIMULATION PERFORMANCE</h2>
-                        <div id="day-config-summary"
-                            style="margin-top:10px; font-size: 0.75rem; color: var(--text-muted); padding: 10px; background: rgba(0,0,0,0.2); border-radius:15px; display:flex; justify-content:space-around; border: 1px solid var(--glass-border);">
-                            <span>SOLAR: <b id="res-cfg-solar">5kW</b></span>
-                            <span>BATT: <b id="res-cfg-batt">10kWh</b></span>
-                            <span>MODE: <b id="res-cfg-mode">Smart</b></span>
-                            <span>WEATHER: <b id="res-cfg-weather">Sunny</b></span>
-                            <span>GRID COST: <b id="res-cfg-grid-cost">₹10</b></span>
+                        <canvas id="confetti-canvas"></canvas>
+                        <div class="results-header">
+                            <i class="fas fa-award results-icon"></i>
+                            <h2>SIMULATION COMPLETE</h2>
+                        </div>
+                        <div class="results-config" id="day-config-summary">
+                            <div class="config-item">
+                                <i class="fas fa-sun"></i>
+                                <span>Solar: <b id="res-cfg-solar">5kW</b></span>
+                            </div>
+                            <div class="config-item">
+                                <i class="fas fa-battery-half"></i>
+                                <span>Battery: <b id="res-cfg-batt">10kWh</b></span>
+                            </div>
+                            <div class="config-item">
+                                <i class="fas fa-robot"></i>
+                                <span>Mode: <b id="res-cfg-mode">Smart</b></span>
+                            </div>
+                            <div class="config-item">
+                                <i class="fas fa-cloud-sun"></i>
+                                <span>Weather: <b id="res-cfg-weather">Sunny</b></span>
+                            </div>
+                            <div class="config-item">
+                                <i class="fas fa-rupee-sign"></i>
+                                <span>Grid: <b id="res-cfg-grid-cost">₹10</b></span>
+                            </div>
                         </div>
                         <div class="results-grid">
-                            <div class="res-item"><span class="label">TOTAL COST</span>
-                                <h1 id="res-cost-val">₹0</h1>
-                            </div>
-                            <div class="res-item"><span class="label">SOLAR YIELD</span>
-                                <h1 id="res-solar-val">0%</h1>
-                            </div>
-                            <div class="res-item"><span class="label">GRID FLOW</span>
-                                <h1 id="res-grid-val">0 kWh</h1>
-                            </div>
-                            <div class="res-item"><span class="label">DIESEL</span>
-                                <h1 id="res-diesel-val">0 kWh</h1>
-                            </div>
-                            <div class="res-item"><span class="label">BATTERY HEALTH</span>
-                                <div class="soh-mini-gauge">
-                                    <div class="soh-fill-res" id="res-soh-fill"></div>
+                            <div class="result-item">
+                                <div class="result-icon"><i class="fas fa-rupee-sign"></i></div>
+                                <div class="result-info">
+                                    <span class="result-label">TOTAL COST</span>
+                                    <span class="result-value" id="res-cost-val">₹0</span>
                                 </div>
-                                <h1 id="res-soh-val">100%</h1>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-icon"><i class="fas fa-sun"></i></div>
+                                <div class="result-info">
+                                    <span class="result-label">SOLAR USAGE</span>
+                                    <span class="result-value" id="res-solar-val">0%</span>
+                                </div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-icon"><i class="fas fa-plug"></i></div>
+                                <div class="result-info">
+                                    <span class="result-label">GRID IMPORT</span>
+                                    <span class="result-value" id="res-grid-val">0 kWh</span>
+                                </div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-icon"><i class="fas fa-gas-pump"></i></div>
+                                <div class="result-info">
+                                    <span class="result-label">DIESEL USED</span>
+                                    <span class="result-value" id="res-diesel-val">0 kWh</span>
+                                </div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-icon"><i class="fas fa-leaf"></i></div>
+                                <div class="result-info">
+                                    <span class="result-label">CO₂ SAVED</span>
+                                    <span class="result-value" id="res-co2-val">0 kg</span>
+                                </div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-icon"><i class="fas fa-heartbeat"></i></div>
+                                <div class="result-info">
+                                    <span class="result-label">BATTERY HEALTH</span>
+                                    <div class="soh-gauge">
+                                        <div class="soh-fill" id="res-soh-fill"></div>
+                                    </div>
+                                    <span class="result-value" id="res-soh-val">100%</span>
+                                </div>
                             </div>
                         </div>
-                        <div id="savings-box" class="savings-banner" style="display:none;">
-                            Smart Scheduler saved ₹<span id="res-savings">0</span> today!
+                        <div id="savings-box" class="savings-banner">
+                            <i class="fas fa-trophy"></i>
+                            <span>Smart Scheduler saved <strong id="res-savings">₹0</strong> today!</span>
                         </div>
-                        <div class="action-btns">
-                            <button class="btn btn-secondary" id="btn-compare"><i class="fas fa-chart-bar"></i> COMPARE
-                                HISTORY</button>
-                            <button class="btn btn-primary" id="btn-next-step">START NEW DAY</button>
-                            <button class="btn btn-secondary btn-round" id="btn-download"><i
-                                    class="fas fa-file-pdf"></i></button>
+                        <div class="results-actions">
+                            <button class="btn btn-secondary" id="btn-compare">
+                                <i class="fas fa-chart-bar"></i> COMPARE
+                            </button>
+                            <button class="btn btn-primary" id="btn-next-step">
+                                <i class="fas fa-play"></i> NEW DAY
+                            </button>
+                            <button class="btn btn-icon" id="btn-download" title="Download Report">
+                                <i class="fas fa-file-pdf"></i>
+                            </button>
+                            <button class="btn btn-icon" id="btn-share" title="Share Results">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- RIGHT: CONTROL & ANALYTICS -->
+            <!-- RIGHT: CONTROL SECTION -->
             <aside class="control-section">
-                <!-- CONTROLS -->
-                <div class="card control-card">
-                    <h2><i class="fas fa-cogs"></i> CONFIGURATION</h2>
-                    <div class="control-group">
-                        <label>Weather Condition</label>
-                        <div class="weather-grid">
-                            <button class="weather-btn active" data-weather="sunny"><i class="fas fa-sun"></i>
-                                Sunny</button>
-                            <button class="weather-btn" data-weather="cloudy"><i class="fas fa-cloud"></i>
-                                Cloudy</button>
-                            <button class="weather-btn" data-weather="rainy"><i class="fas fa-droplet"></i>
-                                Rainy</button>
-                        </div>
+                <!-- QUICK SCENARIOS -->
+                <div class="card scenario-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-magic"></i> QUICK SCENARIOS</h2>
                     </div>
-                    <div class="control-group">
-                        <label>Solar Capacity: <span id="lbl-solar-cap">5 kW</span></label>
-                        <input type="range" id="input-solar-cap" min="1" max="10" step="0.5" value="5">
-                    </div>
-                    <div class="control-group">
-                        <label>Battery Capacity: <span id="lbl-batt-cap">10 kWh</span></label>
-                        <input type="range" id="input-batt-cap" min="5" max="30" step="1" value="10">
-                    </div>
-                    <!-- NEW: GRID COST PARAMETER -->
-                    <div class="control-group">
-                        <label>Base Grid Cost (₹/kWh): <span id="lbl-grid-cost">10</span></label>
-                        <input type="range" id="input-grid-cost" min="1" max="25" step="1" value="10">
-                    </div>
-                    <div class="control-row" style="display:flex; gap:15px; align-items:flex-end;">
-                        <div style="flex:1">
-                            <label
-                                style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Smart
-                                Scheduler</label>
-                            <label class="switch">
-                                <input type="checkbox" id="input-strategy">
-                                <span class="slider"></span>
-                            </label>
-                            <p id="strategy-status" style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">
-                                OFF</p>
-                        </div>
-                        <div style="flex:1">
-                            <label
-                                style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Sim
-                                Speed: <span id="lbl-speed">1x</span></label>
-                            <input type="range" id="input-speed" min="1" max="4" value="1" style="height:15px;">
-                        </div>
-                    </div>
-                    <div class="action-btns">
-                        <button id="btn-start" class="btn btn-primary"><i class="fas fa-play"></i> RUN SIM</button>
-                        <button id="btn-reset" class="btn btn-secondary"><i class="fas fa-redo"></i> RESET</button>
+                    <div class="scenario-grid">
+                        <button class="scenario-btn" data-scenario="summer" title="Hot Summer Day">
+                            <div class="scenario-icon"><i class="fas fa-sun"></i></div>
+                            <span>Summer</span>
+                        </button>
+                        <button class="scenario-btn" data-scenario="monsoon" title="Rainy Monsoon">
+                            <div class="scenario-icon"><i class="fas fa-cloud-rain"></i></div>
+                            <span>Monsoon</span>
+                        </button>
+                        <button class="scenario-btn" data-scenario="winter" title="Cold Winter">
+                            <div class="scenario-icon"><i class="fas fa-snowflake"></i></div>
+                            <span>Winter</span>
+                        </button>
+                        <button class="scenario-btn" data-scenario="peak" title="Peak Demand">
+                            <div class="scenario-icon"><i class="fas fa-bolt"></i></div>
+                            <span>Peak</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- AUDIT PANEL -->
+                <!-- CONFIGURATION CONTROLS -->
+                <div class="card control-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-sliders-h"></i> CONFIGURATION</h2>
+                    </div>
+
+                    <!-- WEATHER SELECTION -->
+                    <div class="control-group">
+                        <label class="control-label">Weather Condition</label>
+                        <div class="weather-grid">
+                            <button class="weather-btn active" data-weather="sunny">
+                                <i class="fas fa-sun"></i>
+                                <span>Sunny</span>
+                            </button>
+                            <button class="weather-btn" data-weather="cloudy">
+                                <i class="fas fa-cloud"></i>
+                                <span>Cloudy</span>
+                            </button>
+                            <button class="weather-btn" data-weather="rainy">
+                                <i class="fas fa-cloud-rain"></i>
+                                <span>Rainy</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SOLAR CAPACITY -->
+                    <div class="control-group">
+                        <label class="control-label">
+                            <span>Solar Capacity</span>
+                            <span class="value-badge" id="lbl-solar-cap">5 kW</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="input-solar-cap" min="1" max="15" step="0.5" value="5" class="custom-slider solar-slider">
+                            <div class="slider-ticks">
+                                <span>1</span><span>5</span><span>10</span><span>15</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BATTERY CAPACITY -->
+                    <div class="control-group">
+                        <label class="control-label">
+                            <span>Battery Capacity</span>
+                            <span class="value-badge" id="lbl-batt-cap">10 kWh</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="input-batt-cap" min="5" max="50" step="1" value="10" class="custom-slider battery-slider">
+                            <div class="slider-ticks">
+                                <span>5</span><span>20</span><span>35</span><span>50</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GRID COST -->
+                    <div class="control-group">
+                        <label class="control-label">
+                            <span>Grid Cost (₹/kWh)</span>
+                            <span class="value-badge" id="lbl-grid-cost">₹10</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="input-grid-cost" min="1" max="25" step="1" value="10" class="custom-slider grid-slider">
+                            <div class="slider-ticks">
+                                <span>₹1</span><span>₹10</span><span>₹18</span><span>₹25</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SMART SCHEDULER & SPEED -->
+                    <div class="control-row">
+                        <div class="toggle-control">
+                            <label class="control-label">Smart Scheduler</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="input-strategy">
+                                <span class="toggle-slider">
+                                    <span class="toggle-knob"></span>
+                                </span>
+                            </label>
+                            <span class="toggle-status" id="strategy-status">OFF</span>
+                        </div>
+                        <div class="speed-control">
+                            <label class="control-label">
+                                Speed: <span id="lbl-speed">1x</span>
+                            </label>
+                            <input type="range" id="input-speed" min="1" max="8" value="1" class="speed-slider">
+                        </div>
+                    </div>
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="action-buttons">
+                        <button id="btn-start" class="btn btn-primary btn-lg">
+                            <i class="fas fa-play"></i>
+                            <span>RUN SIMULATION</span>
+                        </button>
+                        <button id="btn-reset" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i>
+                            <span>RESET</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC PRICING -->
+                <div class="card pricing-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-tags"></i> DYNAMIC PRICING</h2>
+                    </div>
+                    <div class="pricing-content">
+                        <div class="current-price">
+                            <span class="price-label">CURRENT RATE</span>
+                            <span class="price-value" id="current-rate">₹10</span>
+                            <span class="price-unit">/kWh</span>
+                        </div>
+                        <div class="price-indicator" id="price-indicator">
+                            <span class="indicator-badge off-peak">OFF-PEAK</span>
+                        </div>
+                        <div class="price-timeline">
+                            <div class="timeline-track">
+                                <div class="timeline-fill"></div>
+                                <div class="peak-zone"></div>
+                                <div class="timeline-marker" id="price-marker"></div>
+                            </div>
+                            <div class="timeline-labels">
+                                <span>00:00</span>
+                                <span>06:00</span>
+                                <span>12:00</span>
+                                <span class="peak-time">17:00</span>
+                                <span>24:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TELEMETRY AUDIT -->
                 <div class="card audit-card">
-                    <div class="audit-header">
-                        <h2><i class="fas fa-file-invoice"></i> AUDIT</h2>
+                    <div class="card-header">
+                        <h2><i class="fas fa-tachometer-alt"></i> TELEMETRY</h2>
                         <select class="hour-select" id="audit-hour">
-                            <option value="-1">Real-time</option>
-                            <script>for (let i = 0; i < 24; i++) document.write(`<option value="${i}">${i}:00</option>`);</script>
+                            <option value="-1">Live</option>
                         </select>
                     </div>
                     <table class="telemetry-table">
                         <thead>
                             <tr>
                                 <th>SOURCE</th>
-                                <th>KW</th>
+                                <th>POWER</th>
                                 <th>TOTAL</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><span class="indicator" style="background:var(--solar)"></span>Solar</td>
-                                <td id="tab-solar-kw">0.0</td>
-                                <td id="tab-solar-kwh">0.0</td>
+                            <tr class="solar-row">
+                                <td><span class="source-indicator solar"></span>Solar</td>
+                                <td id="tab-solar-kw">0.0 kW</td>
+                                <td id="tab-solar-kwh">0.0 kWh</td>
                             </tr>
-                            <tr>
-                                <td><span class="indicator" style="background:white"></span>Load</td>
-                                <td id="tab-load-kw">0.0</td>
-                                <td id="tab-load-kwh">0.0</td>
+                            <tr class="load-row">
+                                <td><span class="source-indicator load"></span>Load</td>
+                                <td id="tab-load-kw">0.0 kW</td>
+                                <td id="tab-load-kwh">0.0 kWh</td>
                             </tr>
-                            <tr>
-                                <td><span class="indicator" style="background:var(--battery)"></span>Batt</td>
-                                <td id="tab-batt-kw">0.0</td>
-                                <td id="tab-batt-kwh">0.0</td>
+                            <tr class="battery-row">
+                                <td><span class="source-indicator battery"></span>Battery</td>
+                                <td id="tab-batt-kw">0.0 kW</td>
+                                <td id="tab-batt-kwh">0.0 kWh</td>
                             </tr>
-                            <tr>
-                                <td><span class="indicator" style="background:var(--grid)"></span>Grid</td>
-                                <td id="tab-grid-kw">0.0</td>
-                                <td id="tab-grid-kwh">0.0</td>
+                            <tr class="grid-row">
+                                <td><span class="source-indicator grid"></span>Grid</td>
+                                <td id="tab-grid-kw">0.0 kW</td>
+                                <td id="tab-grid-kwh">0.0 kWh</td>
+                            </tr>
+                            <tr class="diesel-row">
+                                <td><span class="source-indicator diesel"></span>Diesel</td>
+                                <td id="tab-diesel-kw">0.0 kW</td>
+                                <td id="tab-diesel-kwh">0.0 kWh</td>
                             </tr>
                         </tbody>
                     </table>
 
                     <!-- BATTERY HEALTH -->
-                    <div class="health-meter">
-                        <label
-                            style="font-size:0.7rem; color:var(--text-muted); display:flex; justify-content:space-between;">
-                            BATT HEALTH (SOH) <span id="val-soh">100%</span>
-                        </label>
-                        <div class="meter-bg">
-                            <div class="meter-fill" id="fill-soh"></div>
+                    <div class="health-section">
+                        <div class="health-header">
+                            <span class="health-label">BATTERY HEALTH</span>
+                            <span class="health-value" id="val-soh">100%</span>
                         </div>
-                        <p style="font-size:0.6rem; color:var(--text-muted); margin-top:5px; text-align:right;">Cycles
-                            Remaining: <span id="val-cycles">1000</span></p>
+                        <div class="health-bar">
+                            <div class="health-fill" id="fill-soh"></div>
+                        </div>
+                        <div class="health-info">
+                            <span>Cycles: <b id="val-cycles">1000</b></span>
+                            <span class="degradation-warn" id="degradation-warn" style="display:none;">
+                                <i class="fas fa-exclamation-triangle"></i> Degrading
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ENVIRONMENTAL IMPACT -->
+                <div class="card eco-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-leaf"></i> ECO IMPACT</h2>
+                    </div>
+                    <div class="eco-grid">
+                        <div class="eco-item">
+                            <div class="eco-icon tree"><i class="fas fa-tree"></i></div>
+                            <div class="eco-value" id="trees-equivalent">0</div>
+                            <div class="eco-label">Trees</div>
+                        </div>
+                        <div class="eco-item">
+                            <div class="eco-icon car"><i class="fas fa-car"></i></div>
+                            <div class="eco-value" id="km-saved">0 km</div>
+                            <div class="eco-label">Saved</div>
+                        </div>
+                        <div class="eco-item">
+                            <div class="eco-icon co2"><i class="fas fa-smog"></i></div>
+                            <div class="eco-value" id="co2-total">0 kg</div>
+                            <div class="eco-label">CO₂</div>
+                        </div>
                     </div>
                 </div>
             </aside>
         </main>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span class="footer-brand">
+                    <i class="fas fa-bolt"></i> MicroGrid Simulator
+                </span>
+                <span class="footer-text">
+                    Built for International Hackathon 2026 | Smart Energy Solutions
+                </span>
+            </div>
+        </footer>
     </div>
 
-    <!-- COMPARISON MODAL -->
+    <!-- ============ COMPARISON MODAL ============ -->
     <div id="compare-modal" class="modal">
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
-            <div class="compare-header">
-                <h2>📊 PERFORMANCE COMPARISON</h2>
-                <button class="btn btn-secondary" style="width:auto; padding:8px 20px"
-                    onclick="document.getElementById('compare-modal').style.display='none'">CLOSE</button>
+            <div class="modal-header">
+                <h2><i class="fas fa-chart-bar"></i> Performance Comparison</h2>
+                <button class="modal-close" onclick="document.getElementById('compare-modal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="compare-grid" id="compare-grid-content">
-                <!-- Content injected via JS -->
+            <div class="modal-body">
+                <div class="compare-grid" id="compare-grid-content"></div>
             </div>
         </div>
     </div>
 
+    <!-- ============ ACHIEVEMENTS MODAL ============ -->
+    <div id="achievements-modal" class="modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content achievements-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-trophy"></i> Achievements</h2>
+                <button class="modal-close" onclick="document.getElementById('achievements-modal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="achievements-grid" id="achievements-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOOLTIP -->
+    <div class="global-tooltip" id="global-tooltip"></div>
+
+    <!-- ============ HELP / THEORY MODAL ============ -->
+    <div id="help-modal" class="modal help-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content help-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-graduation-cap"></i> MicroGrid Theory & Guide</h2>
+                <button class="modal-close" id="help-close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body help-body">
+                <!-- INTRO -->
+                <div class="help-section intro-section">
+                    <div class="help-hero">
+                        <div class="help-icon-large"><i class="fas fa-bolt"></i></div>
+                        <h3>Welcome to MicroGrid Simulator!</h3>
+                        <p>Learn how smart energy scheduling can save money and help the environment</p>
+                    </div>
+                </div>
+
+                <!-- WHAT IS MICROGRID -->
+                <div class="help-section">
+                    <h4><i class="fas fa-network-wired"></i> What is a Microgrid?</h4>
+                    <div class="help-content-box">
+                        <p>A <strong>Microgrid</strong> is a small-scale power system that can:</p>
+                        <ul class="help-list">
+                            <li><i class="fas fa-check"></i> Generate its own electricity (Solar Panels)</li>
+                            <li><i class="fas fa-check"></i> Store energy for later use (Batteries)</li>
+                            <li><i class="fas fa-check"></i> Connect to the main power grid when needed</li>
+                            <li><i class="fas fa-check"></i> Use backup generators (Diesel) in emergencies</li>
+                        </ul>
+                        <div class="help-diagram">
+                            <div class="diag-item solar"><i class="fas fa-solar-panel"></i><span>Solar</span></div>
+                            <div class="diag-arrow"><i class="fas fa-arrow-right"></i></div>
+                            <div class="diag-item battery"><i class="fas fa-battery-full"></i><span>Battery</span></div>
+                            <div class="diag-arrow"><i class="fas fa-arrow-right"></i></div>
+                            <div class="diag-item house"><i class="fas fa-home"></i><span>Home</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DAILY ENERGY SCHEDULER -->
+                <div class="help-section">
+                    <h4><i class="fas fa-calendar-alt"></i> Daily Energy Scheduler (Theme 5)</h4>
+                    <div class="help-content-box">
+                        <p>This simulator focuses on <strong>optimizing daily energy usage</strong>:</p>
+                        <div class="help-grid-2">
+                            <div class="help-card baseline">
+                                <div class="card-icon"><i class="fas fa-random"></i></div>
+                                <h5>Baseline Mode</h5>
+                                <p>Uses energy as needed without optimization. Simple but costly!</p>
+                            </div>
+                            <div class="help-card smart">
+                                <div class="card-icon"><i class="fas fa-brain"></i></div>
+                                <h5>Smart Mode</h5>
+                                <p>AI schedules battery usage to minimize cost. Always saves money!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PEAK PRICING -->
+                <div class="help-section">
+                    <h4><i class="fas fa-chart-line"></i> Peak vs Off-Peak Pricing</h4>
+                    <div class="help-content-box">
+                        <p>Electricity prices vary throughout the day:</p>
+                        <div class="pricing-visual">
+                            <div class="price-time off-peak">
+                                <span class="time">12 AM - 5 PM</span>
+                                <span class="price">₹10/kWh</span>
+                                <span class="label">OFF-PEAK</span>
+                            </div>
+                            <div class="price-time peak">
+                                <span class="time">5 PM - 10 PM</span>
+                                <span class="price">₹15/kWh</span>
+                                <span class="label">PEAK (1.5x)</span>
+                            </div>
+                            <div class="price-time off-peak">
+                                <span class="time">10 PM - 12 AM</span>
+                                <span class="price">₹10/kWh</span>
+                                <span class="label">OFF-PEAK</span>
+                            </div>
+                        </div>
+                        <div class="help-tip">
+                            <i class="fas fa-lightbulb"></i>
+                            <span><strong>Smart Tip:</strong> Charge battery during off-peak, discharge during peak!</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMPONENTS -->
+                <div class="help-section">
+                    <h4><i class="fas fa-cubes"></i> System Components</h4>
+                    <div class="help-content-box">
+                        <div class="components-grid">
+                            <div class="comp-explain solar">
+                                <i class="fas fa-solar-panel"></i>
+                                <h5>Solar Panels</h5>
+                                <p>Generate free electricity from sunlight (6 AM - 6 PM). Peak at noon. Weather affects output.</p>
+                            </div>
+                            <div class="comp-explain battery">
+                                <i class="fas fa-battery-full"></i>
+                                <h5>Battery Storage</h5>
+                                <p>Store excess solar energy. Discharge to power home during peak hours. SOC = State of Charge.</p>
+                            </div>
+                            <div class="comp-explain grid">
+                                <i class="fas fa-plug"></i>
+                                <h5>Power Grid</h5>
+                                <p>Backup power source. Buy electricity when solar/battery not enough. Price varies!</p>
+                            </div>
+                            <div class="comp-explain diesel">
+                                <i class="fas fa-gas-pump"></i>
+                                <h5>Diesel Generator</h5>
+                                <p>Emergency backup. Most expensive (₹25/kWh). High CO₂ emissions. Last resort!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HOW TO USE -->
+                <div class="help-section">
+                    <h4><i class="fas fa-play-circle"></i> How to Use This Simulator</h4>
+                    <div class="help-content-box">
+                        <ol class="steps-list">
+                            <li>
+                                <span class="step-num">1</span>
+                                <div class="step-content">
+                                    <strong>Configure System</strong>
+                                    <p>Set solar capacity, battery size, grid cost using sliders</p>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="step-num">2</span>
+                                <div class="step-content">
+                                    <strong>Choose Weather</strong>
+                                    <p>Sunny = Best solar | Cloudy = 40% output | Rainy = 15% output</p>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="step-num">3</span>
+                                <div class="step-content">
+                                    <strong>Enable Smart Mode</strong>
+                                    <p>Toggle ON to enable AI-powered scheduling that ALWAYS saves money!</p>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="step-num">4</span>
+                                <div class="step-content">
+                                    <strong>Run Simulation</strong>
+                                    <p>Click PLAY to watch 24-hour simulation in real-time</p>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="step-num">5</span>
+                                <div class="step-content">
+                                    <strong>Compare Results</strong>
+                                    <p>View savings, CO₂ reduced, and download PDF report!</p>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- KEY METRICS -->
+                <div class="help-section">
+                    <h4><i class="fas fa-tachometer-alt"></i> Understanding Metrics</h4>
+                    <div class="help-content-box metrics-box">
+                        <div class="metric-explain">
+                            <span class="metric-name">SOC (State of Charge)</span>
+                            <span class="metric-desc">Battery level from 0-100%. Keep above 10% for safety.</span>
+                        </div>
+                        <div class="metric-explain">
+                            <span class="metric-name">SOH (State of Health)</span>
+                            <span class="metric-desc">Battery health. Decreases with use. Start at 100%.</span>
+                        </div>
+                        <div class="metric-explain">
+                            <span class="metric-name">CO₂ Saved</span>
+                            <span class="metric-desc">Carbon dioxide emissions avoided by using solar instead of grid.</span>
+                        </div>
+                        <div class="metric-explain">
+                            <span class="metric-name">Solar Efficiency</span>
+                            <span class="metric-desc">Percentage of load powered by solar. Higher is better!</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-footer">
+                    <button class="btn btn-primary btn-lg" onclick="closeHelpModal()">
+                        <i class="fas fa-rocket"></i> Start Exploring!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
     <script src="script.js"></script>
 </body>
 
