@@ -143,7 +143,7 @@ Navigate to `http://localhost:8080` to access the simulator.
 
 | Dashboard View | 3D Visualization |
 |:---:|:---:|
-| image.png | image-1.png|
+| ![Alt Text](image.png) | ![Alt Text](image-1.png)|
 
 | PDF Report Page 1 | PDF Report Page 2 |
 |:---:|:---:|
