@@ -889,6 +889,105 @@ body::before {
     color: var(--solar);
 }
 
+/* Data Source Badge */
+.data-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+    z-index: 20;
+    transition: all var(--transition-normal);
+}
+
+.data-badge.authentic {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.1));
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+    animation: authenticPulse 2s ease-in-out infinite;
+}
+
+.data-badge.simulated {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(251, 191, 36, 0.1));
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    color: #fbbf24;
+}
+
+.data-badge i {
+    font-size: 0.8rem;
+}
+
+@keyframes authenticPulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+    50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
+}
+
+/* Real Data Indicators */
+.real-data-indicators {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 6px;
+    max-width: 340px;
+    z-index: 20;
+}
+
+.real-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: var(--radius-sm);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-light);
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.real-indicator:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
+}
+
+.real-indicator i {
+    font-size: 0.8rem;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.real-indicator i.fa-thermometer-half { color: #ef4444; }
+.real-indicator i.fa-tint { color: #3b82f6; }
+.real-indicator i.fa-wind { color: #8b5cf6; }
+.real-indicator i.fa-sun { color: #fbbf24; }
+.real-indicator i.fa-wave-square { color: #10b981; }
+.real-indicator i.fa-bolt { color: #f97316; }
+
+.real-indicator span {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    min-width: 45px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
 /* Efficiency Ring */
 .efficiency-ring {
     position: absolute;
@@ -2819,6 +2918,28 @@ body::before {
     .results-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    
+    /* Real data indicators responsive */
+    .real-data-indicators {
+        max-width: 200px;
+        bottom: 10px;
+        left: 10px;
+    }
+    
+    .real-indicator {
+        padding: 3px 6px;
+        font-size: 0.65rem;
+    }
+    
+    .real-indicator span {
+        min-width: 40px;
+        font-size: 0.6rem;
+    }
+    
+    .data-badge {
+        font-size: 0.6rem;
+        padding: 4px 8px;
+    }
 }
 
 /* ===== SCROLLBAR ===== */
@@ -3418,6 +3539,23 @@ body::before {
         inset 0 0 30px rgba(99, 102, 241, 0.1);
     border-radius: var(--radius-lg);
     background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(10, 15, 26, 0.98));
+    animation: chart3DFloat 8s ease-in-out infinite;
+}
+
+/* Continuous 3D floating animation */
+@keyframes chart3DFloat {
+    0%, 100% {
+        transform: rotateX(25deg) rotateY(-10deg) translateZ(50px);
+    }
+    25% {
+        transform: rotateX(20deg) rotateY(-5deg) translateZ(60px);
+    }
+    50% {
+        transform: rotateX(25deg) rotateY(5deg) translateZ(50px);
+    }
+    75% {
+        transform: rotateX(30deg) rotateY(-8deg) translateZ(55px);
+    }
 }
 
 .chart-3d-mode .chart-box::before {
@@ -3442,9 +3580,16 @@ body::before {
     background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
     filter: blur(10px);
     transform: rotateX(90deg);
+    animation: shadowPulse 8s ease-in-out infinite;
+}
+
+@keyframes shadowPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.8; }
 }
 
 .chart-3d-mode:hover .chart-box {
+    animation-play-state: paused;
     transform: rotateX(20deg) rotateY(-5deg) translateZ(70px);
 }
 

@@ -1,70 +1,135 @@
-# ⚡ MicroGrid Simulator | Smart Energy Scheduler v4.0
+# ⚡ MicroGrid Simulator v6.0 | Physics-Based Smart Energy Scheduler
 
-> **International Hackathon 2026 Submission**: Advanced Physics-Based Solar Microgrid Digital Twin with Real-Time 3D Visualization, AI-Powered Scheduling & Comprehensive Analytics.
-
-[🔗 Live Demo](https://microgrid-vlab-hackathon.vercel.app/)
+> **International Hackathon 2026 Submission**: Research-Grade Solar Microgrid Digital Twin with Real Dataset Integration, Physics-Based Battery Model & Deterministic Baseline vs Smart Comparison.
 
 ---
 
 ## 📖 Overview
 
-**MicroGrid Simulator** is a next-generation energy management system that solves the "Dumb Grid" problem through intelligent automation. It creates a **digital twin** of a smart home microgrid, demonstrating how AI-driven decision-making can dramatically reduce energy costs, minimize carbon footprint, and extend battery lifespan.
+**MicroGrid Simulator** is a research-grade energy management system that creates a **digital twin** of a residential microgrid. Unlike toy simulations, this system uses **authentic renewable energy datasets** and **physics-compliant models** to demonstrate how intelligent scheduling can reduce energy costs.
 
-This isn't just a visualization—it's a **fully physics-compliant simulation engine** featuring:
-- ⚡ Real-time Power Flow (Solar → Battery → Load → Grid)
-- 💰 Dynamic Grid Pricing (Peak/Off-Peak billing with time-of-use rates)
-- 🔋 Realistic Battery Physics (92% efficiency, C/2 charge rate, 10% min SOC)
-- 🌤️ Weather Impact Simulation (Sunny/Cloudy/Rainy irradiance modeling)
-- 🌱 Environmental Impact Tracking (CO₂ savings, tree equivalents)
+### What Makes This Different?
+- 📊 **Real Dataset**: Uses actual renewable energy measurements (3548 hourly records)
+- ⚗️ **Physics-Based**: No fake savings - costs emerge from actual energy flow calculations
+- 🔬 **Deterministic**: Baseline & Smart run under **identical conditions** for fair comparison
+- 📐 **Research-Grade**: Proper min-max normalization, battery constraints, strict cost formulas
+
+---
+
+## 🧮 Mathematical Model
+
+### 1. Data Normalization (Min-Max Scaling)
+
+All dataset values are normalized to user-configured capacities:
+
+$$Solar_{output}(t) = \frac{Solar_{raw}(t)}{Solar_{max}^{dataset}} \times Capacity_{solar}^{user}$$
+
+$$Load_{demand}(t) = \frac{Load_{raw}(t)}{Load_{max}^{dataset}} \times Load_{peak}^{typical}$$
+
+Where:
+- $Solar_{max}^{dataset}$ = Maximum solar output in dataset
+- $Load_{peak}^{typical}$ = 7 kW (typical Indian household with AC)
+
+### 2. Battery State Model
+
+The battery state-of-charge (SOC) evolves according to:
+
+$$SOC(t+1) = SOC(t) + \eta_c \cdot P_{charge}(t) \cdot \Delta t - \frac{P_{discharge}(t) \cdot \Delta t}{\eta_d}$$
+
+Where:
+- $\eta_c = \sqrt{\eta_{roundtrip}}$ = Charging efficiency (~94%)
+- $\eta_d = \sqrt{\eta_{roundtrip}}$ = Discharging efficiency (~94%)
+- $\eta_{roundtrip}$ = 88% (realistic Li-ion efficiency)
+
+**Battery Constraints:**
+$$SOC_{min} \leq SOC(t) \leq SOC_{max}$$
+$$0 \leq P_{charge}(t) \leq P_{max}^{charge}$$
+$$0 \leq P_{discharge}(t) \leq P_{max}^{discharge}$$
+
+With:
+- $SOC_{min}$ = 20% (protects battery longevity)
+- $SOC_{max}$ = 100%
+- $P_{max}^{charge} = P_{max}^{discharge} = \frac{Capacity}{4}$ (C/4 rate)
+
+### 3. Energy Flow Priority
+
+Each hour, power is dispatched in strict priority order:
+
+```
+1. Solar → Load       (direct consumption, free)
+2. Excess Solar → Battery  (store for later)
+3. Battery → Load     (policy-controlled discharge)
+4. Grid → Load        (up to 5kW limit)
+5. Diesel → Load      (expensive backup, last resort)
+```
+
+### 4. Cost Calculation (Strict Physics)
+
+**No artificial multipliers or forced savings!**
+
+$$Cost_{hour}(t) = P_{grid}(t) \times Tariff(t) + P_{diesel}(t) \times Price_{diesel}$$
+
+**Time-of-Use Tariff:**
+$$Tariff(t) = \begin{cases} Base_{price} \times 1.5 & \text{if } t \in [17:00, 22:00] \text{ (Peak)} \\ Base_{price} & \text{otherwise (Off-Peak)} \end{cases}$$
+
+**Total Daily Cost:**
+$$Cost_{total} = \sum_{t=0}^{23} Cost_{hour}(t)$$
+
+### 5. Baseline vs Smart Strategy
+
+Both strategies are simulated under **identical inputs** (same solar, load, tariffs, initial SOC):
+
+| Aspect | Baseline Policy | Smart Policy |
+|--------|----------------|--------------|
+| Battery Discharge | Always allowed | Only when solar insufficient OR during peak |
+| Grid Charging | Never | Off-peak if deficit predicted |
+| Optimization | None | Time-of-use arbitrage |
+
+**Savings emerge from algorithm behavior, NOT injected!**
+
+$$\Delta Cost = Cost_{baseline} - Cost_{smart}$$
+
+Smart can be better, similar, or slightly worse depending on conditions.
+
+### 6. CO₂ Emissions Model
+
+$$CO_2(t) = P_{grid}(t) \times EF_{grid} + P_{diesel}(t) \times EF_{diesel}$$
+
+Where:
+- $EF_{grid}$ = 0.5 kg CO₂/kWh (Indian grid average)
+- $EF_{diesel}$ = 0.8 kg CO₂/kWh (diesel generator)
 
 ---
 
 ## 🚀 Key Features
 
-### 🧠 Smart Scheduler AI
-The intelligent optimization algorithm that:
-- **Peak Hour Detection**: Automatically reserves battery charge for expensive evening spikes (5 PM - 10 PM)
-- **Smart Charging**: Charges battery during solar abundance with 92% round-trip efficiency
-- **Cost Arbitrage**: Exploits off-peak rates to minimize grid dependency during peak hours
-- **Load Balancing**: Limits grid import to 5kW max, using battery to supplement high loads
-- **Savings**: Achieves ~20-35% cost reduction compared to baseline operation
+### 📊 Real Dataset Integration
+- **3548 hourly records** from authentic renewable energy measurements
+- Fields: Solar PV output, wind power, grid load demand, battery SOC, temperature, humidity, irradiance
+- Proper min-max normalization for scaling to user configuration
 
-### 🔋 Advanced Battery Simulation
-- **Realistic Physics**: C/2 charge rate limiting, 92% charge/discharge efficiency
-- **SOC Management**: Maintains 10% minimum state-of-charge for battery longevity
-- **Charge/Discharge Tracking**: Real-time visualization of battery power flow direction
-- **Health Monitoring**: Tracks cumulative energy throughput and cycle count
+### 🔋 Advanced Battery Physics
+- Realistic 88% round-trip efficiency (split into charge/discharge)
+- C/4 rate limiting (max 25% of capacity per hour)
+- 20% minimum SOC protection
+- Energy throughput tracking
 
-### 📊 Power Analytics Dashboard
-- **5-Dataset Chart**: Solar, Load, Grid, Battery Power, and SOC% on single view
-- **Toggle Controls**: Show/hide individual datasets for focused analysis
-- **3D Chart Mode**: Interactive 3D perspective with mouse-tracking rotation
-- **Fullscreen Mode**: Expand chart to full screen with complete state restoration
-- **Real-time Updates**: Live data streaming during simulation
+### ⚖️ Fair Comparison System
+- Baseline and Smart run on **identical inputs**
+- Deterministic simulation (no random noise)
+- Precomputed 24-hour results for both strategies
+- Real savings calculation (can be positive, zero, or negative)
 
-### 📄 Comprehensive PDF Reports
-One-click generation of professional audit reports including:
-- **Input Configuration**: Solar capacity, battery specs, grid costs, weather conditions
-- **Output Results**: Total cost, baseline comparison, savings percentage
-- **Environmental Impact**: CO₂ saved, tree equivalents, car km avoided
-- **Hourly Data Table**: Complete 24-hour breakdown with all metrics
-- **Embedded Chart**: Visual graph snapshot in the report
-- **Performance Analysis**: Peak/off-peak breakdown, efficiency metrics, recommendations
-- **Multi-Day Comparison**: Historical data across simulation days
+### 📈 Real-Time Visualization
+- 5-dataset power chart (Solar, Load, Grid, Battery, SOC)
+- 3D interactive chart mode
+- Animated energy flow particles
+- Day/night cycle with weather effects
 
-### 🎮 Interactive 3D Visualization
-- **Animated Environment**: Day/night cycle with sun/moon orbit
-- **Weather Effects**: Dynamic rain, clouds, and lightning animations
-- **Energy Flow Particles**: Canvas-based particle system showing power flow
-- **Component Cards**: Solar panel, battery, load, grid with real-time stats
-- **Appliance Board**: Visual status of home appliances (AC, TV, Washer, etc.)
-
-### 🎯 Quick Scenarios
-Pre-configured simulation presets:
-- **Summer**: High solar, peak AC usage
-- **Monsoon**: Reduced solar, moderate load
-- **Winter**: Low solar, heating loads
-- **Peak Demand**: Stress-test with maximum load
+### 📄 Research-Grade Reports
+- PDF export with hourly baseline vs smart costs
+- CSV auto-download with per-hour metrics
+- Multi-day comparison tables
 
 ---
 
@@ -72,93 +137,94 @@ Pre-configured simulation presets:
 
 | Technology | Purpose |
 |------------|---------|
-| **Vanilla JavaScript (ES6+)** | Core simulation engine, maximum performance |
-| **HTML5 Canvas** | Energy particle animations |
-| **CSS3** | Glassmorphism, 3D transforms, animations |
-| **Chart.js** | Real-time power analytics visualization |
-| **jsPDF + AutoTable** | Professional PDF report generation |
-| **GSAP** | Smooth UI animations |
-| **Font Awesome** | Icon library |
+| **Vanilla JavaScript (ES6+)** | Physics simulation engine |
+| **HTML5 Canvas** | Energy flow animations |
+| **CSS3** | Glassmorphism UI, 3D transforms |
+| **Chart.js** | Real-time power analytics |
+| **jsPDF + AutoTable** | PDF report generation |
 
 ---
 
 ## ⚙️ Installation & Setup
 
-### 1. Clone the Repository
+### 1. Clone Repository
 ```bash
 git clone https://github.com/rohit3337/microgrid_hackathon
 cd microgrid_hackathon
 ```
 
 ### 2. Run Locally
-Since this is a client-side application, serve it with any static server:
-
 ```bash
 # Using Python
 python -m http.server 8080
 
-# Using Node.js (Live Server)
+# Using Node.js
 npx live-server
 
-# Using VS Code
-# Install "Live Server" extension and click "Go Live"
+# Using VS Code Live Server extension
+# Click "Go Live"
 ```
 
-### 3. Open in Browser
-Navigate to `http://localhost:8080` to access the simulator.
+### 3. Open Browser
+Navigate to `http://localhost:8080`
 
 ---
 
 ## 💡 How to Demo
 
-### Basic Demonstration
-1. **Baseline Run**: Click "RUN SIMULATION" with Smart Scheduler **OFF**
-   - Observe high cost (~₹1400-1600)
-   - Notice grid usage during peak hours
+### Basic Comparison
+1. **Set Configuration**: Solar = 5kW, Battery = 10kWh, Grid Cost = ₹10
+2. **Baseline Run**: Smart Scheduler **OFF** → Run Simulation
+3. **Smart Run**: Smart Scheduler **ON** → Reset → Run Simulation
+4. **Compare**: Click "Compare" button to see side-by-side costs
 
-2. **Smart Run**: Toggle Smart Scheduler **ON**, run again
-   - Observe cost reduction (~₹1000-1200)
-   - Battery discharges during peak, charges during solar hours
-
-3. **Compare**: Check the Baseline vs Smart comparison bar
-   - Green bar shows savings achieved
-
-### Advanced Features
-4. **3D Chart**: Click the cube icon (🎲) to enable 3D perspective
-   - Move mouse to rotate the chart view
-
-5. **Fullscreen**: Click expand icon to view chart in fullscreen
-   - Press Escape or minimize button to restore original layout
-
-6. **Download Report**: Click download icon for comprehensive PDF
-   - Includes all inputs, outputs, hourly data, and chart
-
-7. **Weather Test**: Change weather to "Rainy" and observe solar reduction
-
-8. **Multi-Day**: Use Day navigation to simulate multiple days and compare
+### Stress Test
+- **High Solar (15kW)**: Watch baseline approach ₹0 (solar covers everything)
+- **Low Battery (5kWh)**: See grid dependency increase
+- **Rainy Weather**: Solar drops to 15%, grid usage spikes
 
 ---
 
-## 📸 Screenshots
+## 📐 Configuration Parameters
 
-| Dashboard View | 3D Visualization |
-|:---:|:---:|
-| ![Alt Text](image.png) | ![Alt Text](image-1.png)|
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `BASE_GRID_PRICE` | ₹10/kWh | Off-peak electricity rate |
+| `PEAK_FACTOR` | 1.5× | Peak hour multiplier |
+| `DIESEL_PRICE` | ₹25/kWh | Backup generator cost |
+| `PEAK_HOURS` | 17-22 | Evening peak (5-10 PM) |
+| `GRID_LIMIT` | 5 kW | Max grid import |
+| `MIN_SOC` | 20% | Battery floor |
+| `EFFICIENCY` | 88% | Round-trip efficiency |
 
-| PDF Report Page 1 | PDF Report Page 2 |
-|:---:|:---:|
-| Configuration & Data | Chart & Analysis |
+---
+
+## 📊 Dataset Fields
+
+The `Renewable_energy_dataset.csv` contains:
+
+| Field | Unit | Description |
+|-------|------|-------------|
+| `solar_pv_output` | kW | Solar panel generation |
+| `wind_power_output` | kW | Wind turbine generation |
+| `grid_load_demand` | kW | Household consumption |
+| `battery_state_of_charge` | % | Battery SOC |
+| `temperature` | °C | Ambient temperature |
+| `humidity` | % | Relative humidity |
+| `solar_irradiance` | W/m² | Solar radiation |
+| `frequency` | Hz | Grid frequency |
+| `voltage` | V | Grid voltage |
 
 ---
 
 ## 🏆 Hackathon Highlights
 
-- ✅ **Physics-Accurate**: Real battery efficiency curves, not simplified models
-- ✅ **Production-Ready UI**: Glassmorphism design, smooth animations
-- ✅ **Complete Documentation**: PDF reports with all technical details
-- ✅ **Responsive**: Works on desktop and tablet screens
-- ✅ **No Dependencies Hell**: Pure vanilla JS, instant load times
-- ✅ **Educational**: Clear visualization of smart grid concepts
+- ✅ **Research-Grade**: No fake savings, physics-based calculations
+- ✅ **Real Data**: Authentic renewable energy dataset
+- ✅ **Fair Comparison**: Identical conditions for baseline vs smart
+- ✅ **Complete Math**: All formulas documented and implemented
+- ✅ **Production UI**: Glassmorphism design, smooth animations
+- ✅ **Zero Dependencies**: Pure vanilla JS, instant load
 
 ---
 
@@ -170,10 +236,10 @@ Navigate to `http://localhost:8080` to access the simulator.
 
 ## 📄 License
 
-MIT License - Free to use, modify, and distribute!
+MIT License - Free to use, modify, and distribute.
 
 ---
 
 <p align="center">
-  <b>⚡ Powering the Future of Smart Energy ⚡</b>
+  <b>⚡ Physics-Based Smart Energy Simulation ⚡</b>
 </p>

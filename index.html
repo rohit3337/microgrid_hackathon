@@ -173,6 +173,39 @@
                         <span id="env-temp">32°C</span>
                     </div>
 
+                    <!-- DATA SOURCE BADGE -->
+                    <div id="data-source-badge" class="data-badge authentic">
+                        <i class="fas fa-chart-line"></i> SIMULATION
+                    </div>
+
+                    <!-- REAL DATA INDICATORS -->
+                    <div id="real-data-indicators" class="real-data-indicators">
+                        <div class="real-indicator" title="Real Temperature">
+                            <i class="fas fa-thermometer-half"></i>
+                            <span>--°C</span>
+                        </div>
+                        <div class="real-indicator" title="Real Humidity">
+                            <i class="fas fa-tint"></i>
+                            <span>--%</span>
+                        </div>
+                        <div class="real-indicator" title="Wind Speed">
+                            <i class="fas fa-wind"></i>
+                            <span>-- m/s</span>
+                        </div>
+                        <div class="real-indicator" title="Solar Irradiance">
+                            <i class="fas fa-sun"></i>
+                            <span>-- W/m²</span>
+                        </div>
+                        <div class="real-indicator" title="Grid Frequency">
+                            <i class="fas fa-wave-square"></i>
+                            <span>-- Hz</span>
+                        </div>
+                        <div class="real-indicator" title="Grid Voltage">
+                            <i class="fas fa-bolt"></i>
+                            <span>-- V</span>
+                        </div>
+                    </div>
+
                     <!-- EFFICIENCY RING -->
                     <div class="efficiency-ring" id="efficiency-ring">
                         <svg viewBox="0 0 100 100">
@@ -348,7 +381,7 @@
                 <!-- LIVE ENERGY SANKEY DIAGRAM -->
                 <div class="energy-sankey" id="energy-sankey">
                     <div class="sankey-header">
-                        <h4><i class="fas fa-random"></i> REAL-TIME ENERGY FLOW</h4>
+                        <h4><i class="fas fa-random"></i> SIMULATION ENERGY FLOW</h4>
                         <div class="sankey-legend">
                             <span class="legend-item solar-legend"><i class="fas fa-sun"></i> Solar</span>
                             <span class="legend-item battery-legend"><i class="fas fa-battery-half"></i> Battery</span>
@@ -805,30 +838,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- ENVIRONMENTAL IMPACT -->
-                <div class="card eco-card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-leaf"></i> ECO IMPACT</h2>
-                    </div>
-                    <div class="eco-grid">
-                        <div class="eco-item">
-                            <div class="eco-icon tree"><i class="fas fa-tree"></i></div>
-                            <div class="eco-value" id="trees-equivalent">0</div>
-                            <div class="eco-label">Trees</div>
-                        </div>
-                        <div class="eco-item">
-                            <div class="eco-icon car"><i class="fas fa-car"></i></div>
-                            <div class="eco-value" id="km-saved">0 km</div>
-                            <div class="eco-label">Saved</div>
-                        </div>
-                        <div class="eco-item">
-                            <div class="eco-icon co2"><i class="fas fa-smog"></i></div>
-                            <div class="eco-value" id="co2-total">0 kg</div>
-                            <div class="eco-label">CO₂</div>
-                        </div>
-                    </div>
-                </div>
             </aside>
         </main>
 
@@ -1027,14 +1036,14 @@
                                 <span class="step-num">4</span>
                                 <div class="step-content">
                                     <strong>Run Simulation</strong>
-                                    <p>Click PLAY to watch 24-hour simulation in real-time</p>
+                                    <p>Click PLAY to watch 24-hour energy simulation unfold</p>
                                 </div>
                             </li>
                             <li>
                                 <span class="step-num">5</span>
                                 <div class="step-content">
                                     <strong>Compare Results</strong>
-                                    <p>View savings, CO₂ reduced, and download PDF report!</p>
+                                    <p>View savings, CO₂ reduced - data auto-downloads when complete!</p>
                                 </div>
                             </li>
                         </ol>
