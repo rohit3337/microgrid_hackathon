@@ -267,6 +267,7 @@ const simState = {
     weather: 'sunny',
     soc: 50,
     soh: 100,
+    batteryCycles: 0,
     totalDischarge: 0,
     totalCO2Saved: 0,
     days: {
@@ -1398,6 +1399,19 @@ function runSimulationStep() {
     day.solarKwh = (day.solarKwh || 0) + (live.solarToLoadKw + live.solarToBattKw);
     day.batteryKwh = (day.batteryKwh || 0) + Math.abs(batteryPowerSigned);
 
+    // Battery Health (SOH) Degradation Model
+    // Formula: SOH decreases based on cumulative energy throughput
+    // Li-ion degradation: ~0.5% per full cycle for visible simulation effect
+    // Full cycle = 2 × battery capacity kWh (charge + discharge)
+    const batteryThroughputThisHour = Math.abs(batteryPowerSigned);
+    simState.totalDischarge += batteryThroughputThisHour;
+    
+    // Calculate equivalent full cycles and apply degradation
+    const fullCycleKwh = 2 * simState.battCap; // One full cycle = charge + discharge
+    simState.batteryCycles = simState.totalDischarge / fullCycleKwh;
+    const degradationPerCycle = 0.5; // 0.5% per cycle (accelerated for demo visibility)
+    simState.soh = Math.max(70, 100 - (simState.batteryCycles * degradationPerCycle));
+
     // Always keep full-day totals for comparisons (no faked inflation)
     day.baselineCost = sim.baseline.totals.cost;
     day.smartCost = sim.smart.totals.cost;
@@ -1718,7 +1732,7 @@ function updateBatteryHealth() {
     const degradationWarn = document.getElementById('degradation-warn');
     if (sohValue) sohValue.textContent = simState.soh.toFixed(1) + '%';
     if (sohFill) sohFill.style.width = simState.soh + '%';
-    if (cycles) cycles.textContent = Math.round(simState.soh * 10);
+    if (cycles) cycles.textContent = (simState.batteryCycles || 0).toFixed(1);
     if (degradationWarn) degradationWarn.style.display = simState.soh < 90 ? 'inline' : 'none';
 }
 
