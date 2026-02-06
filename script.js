@@ -40,7 +40,7 @@
 // ===== CONFIGURATION =====
 const CONFIG = {
     BASE_GRID_PRICE: 10,        // ₹/kWh off-peak
-    PEAK_FACTOR: 1.0,           // No peak multiplier - same price all day
+    PEAK_FACTOR: 1.5,           // Peak price multiplier
     DIESEL_PRICE: 25,           // ₹/kWh (expensive backup)
     PEAK_HOURS: [17, 18, 19, 20, 21, 22],  // Evening peak 5-10 PM
     WEATHER_IMPACT: { sunny: 1.0, cloudy: 0.4, rainy: 0.15 },

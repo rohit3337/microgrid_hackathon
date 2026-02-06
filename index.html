@@ -948,21 +948,31 @@
                     </div>
                 </div>
 
-                <!-- PRICING INFO -->
+                <!-- PEAK PRICING -->
                 <div class="help-section">
-                    <h4><i class="fas fa-chart-line"></i> Grid Pricing</h4>
+                    <h4><i class="fas fa-chart-line"></i> Peak vs Off-Peak Pricing</h4>
                     <div class="help-content-box">
-                        <p>Electricity price is set by user and remains constant throughout the day:</p>
+                        <p>Electricity prices vary throughout the day:</p>
                         <div class="pricing-visual">
-                            <div class="price-time off-peak" style="flex: 1;">
-                                <span class="time">24 Hours</span>
+                            <div class="price-time off-peak">
+                                <span class="time">12 AM - 5 PM</span>
                                 <span class="price">₹10/kWh</span>
-                                <span class="label">FLAT RATE</span>
+                                <span class="label">OFF-PEAK</span>
+                            </div>
+                            <div class="price-time peak">
+                                <span class="time">5 PM - 10 PM</span>
+                                <span class="price">₹15/kWh</span>
+                                <span class="label">PEAK (1.5x)</span>
+                            </div>
+                            <div class="price-time off-peak">
+                                <span class="time">10 PM - 12 AM</span>
+                                <span class="price">₹10/kWh</span>
+                                <span class="label">OFF-PEAK</span>
                             </div>
                         </div>
                         <div class="help-tip">
                             <i class="fas fa-lightbulb"></i>
-                            <span><strong>Tip:</strong> Adjust grid cost slider to see how pricing affects total cost!</span>
+                            <span><strong>Smart Tip:</strong> Charge battery during off-peak, discharge during peak!</span>
                         </div>
                     </div>
                 </div>
