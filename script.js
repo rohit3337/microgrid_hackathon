@@ -1404,12 +1404,14 @@ function runSimulationStep() {
     day.baselineEmissionsKg = sim.baseline.totals.co2Kg;
     day.smartEmissionsKg = sim.smart.totals.co2Kg;
 
-    // CO2 saved in HUD = baseline emissions - live emissions (can be 0 if worse)
-    const liveTotalEmissionsToHour = (simState.isSmart ?
+    // CO2 saved = CO2 that WOULD have been emitted if all load came from grid
+    // This represents the environmental benefit of using solar/battery
+    const totalLoadToHour = day.hourly.reduce((s, h) => s + h.load, 0) + live.loadKw;
+    const hypotheticalGridOnlyCO2 = totalLoadToHour * CONFIG.CO2_PER_GRID_KWH;
+    const actualEmissionsToHour = (simState.isSmart ?
         sim.smart.hourly.slice(0, hour + 1).reduce((s, x) => s + x.co2Kg, 0) :
         sim.baseline.hourly.slice(0, hour + 1).reduce((s, x) => s + x.co2Kg, 0));
-    const baselineTotalEmissionsToHour = sim.baseline.hourly.slice(0, hour + 1).reduce((s, x) => s + x.co2Kg, 0);
-    day.co2Saved = Math.max(0, baselineTotalEmissionsToHour - liveTotalEmissionsToHour);
+    day.co2Saved = Math.max(0, hypotheticalGridOnlyCO2 - actualEmissionsToHour);
     simState.totalCO2Saved = day.co2Saved;
 
     // SOC for HUD is the live strategy SOC
